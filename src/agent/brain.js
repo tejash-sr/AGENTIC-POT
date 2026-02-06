@@ -375,13 +375,54 @@ class ConversationBrain {
       return this.pickRandom(responses);
     }
     
+    // Weather talk
+    if (/weather|rain|hot|cold|sunny|monsoon/i.test(lowerMsg)) {
+      const responses = [
+        "Haan yaar, the weather is crazy these days! But tell me, what's up?",
+        "I know right! Mumbai weather is so unpredictable. Anyway, what can I do for you?",
+        "Yes yes! I stepped out today and it was so humid. But anyway, you were saying?"
+      ];
+      return this.addPersonalityFlair(this.pickRandom(responses));
+    }
+    
+    // Cricket/Sports
+    if (/cricket|match|india|ipl|worldcup|kohli|rohit/i.test(lowerMsg)) {
+      const responses = [
+        "Arrey don't get me started on cricket! My husband watches every match. But anyway, what were you calling about?",
+        "Haha yes! Did you see that catch? Amazing! But wait, what did you need from me?",
+        "Cricket! My whole family was glued to the TV. But tell me, what's the purpose of your call?"
+      ];
+      return this.addPersonalityFlair(this.pickRandom(responses));
+    }
+    
+    // Food
+    if (/food|eat|lunch|dinner|breakfast|biryani|pizza|chai/i.test(lowerMsg)) {
+      const responses = [
+        "Oh nice! I'm actually getting hungry now haha. But anyway, what were we discussing?",
+        "Yaar don't talk about food, I'm on diet! But tell me, what did you call for?",
+        "Mmm that sounds delicious! I just had maggi. Anyway, how can I help you?"
+      ];
+      return this.addPersonalityFlair(this.pickRandom(responses));
+    }
+    
+    // Family
+    if (/family|husband|wife|kids|children|parents|mother|father/i.test(lowerMsg)) {
+      const responses = [
+        "Family is everything na! My husband always says the same. But tell me, what's the matter?",
+        "So nice! Family time is the best. Anyway, what can I do for you?",
+        "Haan, family first always! But coming back to the topic, what were you saying?"
+      ];
+      return this.addPersonalityFlair(this.pickRandom(responses));
+    }
+    
     // General friendly response
     const responses = [
       "Hmm interesting! Tell me more about that?",
       "Oh I see. And then what happened?",
       "Accha accha, I'm listening. Go on...",
       "That's nice! What else?",
-      "Okay okay, understood. Anything else?"
+      "Okay okay, understood. Anything else?",
+      "Haha nice! But anyway, what brings you to call me today?"
     ];
     return this.addPersonalityFlair(this.pickRandom(responses));
   }
