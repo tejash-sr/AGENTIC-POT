@@ -67,6 +67,20 @@ class AgentOrchestrator {
    * Analyze the scammer's message for keywords and intent
    */
   analyzeMessage(message) {
+    // Extract UPI ID if present
+    const upiPatterns = [
+      /([a-zA-Z0-9._-]+@[a-zA-Z]{2,})/gi,  // Standard UPI pattern
+      /([a-zA-Z0-9._-]+@(?:ybl|okaxis|oksbi|paytm|upi|apl|ibl|axl|sbi|hdfc))/gi  // Common suffixes
+    ];
+    let extractedUPI = null;
+    for (const pattern of upiPatterns) {
+      const match = message.match(pattern);
+      if (match) {
+        extractedUPI = match[0];
+        break;
+      }
+    }
+    
     return {
       // What is the scammer asking for?
       wantsOTP: /otp|one.?time|verification code|code.?(we|you)|receive/i.test(message),
@@ -98,6 +112,10 @@ class AgentOrchestrator {
       // Phone numbers mentioned
       hasPhoneNumber: /\+91[\s\-]?\d{10}|\b\d{10}\b/i.test(message),
       extractedPhone: (message.match(/\+91[\s\-]?(\d{10})|(\b\d{10}\b)/i) || [])[0],
+      
+      // UPI ID mentioned
+      hasUPIId: extractedUPI !== null,
+      extractedUPI: extractedUPI,
       
       // Specific numeric values
       hasAmount: /rs\.?\s*\d+|\₹\s*\d+|\d+\s*rupees/i.test(message),
@@ -201,7 +219,21 @@ class AgentOrchestrator {
    * Respond to payment/UPI requests - extract scammer's payment details
    */
   respondToPaymentRequest(analysis, turnCount, message) {
-    // If they mentioned specific amount
+    // Check if they already provided a UPI ID
+    if (analysis.hasUPIId && analysis.extractedUPI) {
+      const upiId = analysis.extractedUPI;
+      const responses = [
+        `Okay so I send to ${upiId}? Wait, let me note it down. And what's your name for confirmation?`,
+        `${upiId} - got it. Before I pay, tell me - what name will show up when I search this UPI?`,
+        `Sending to ${upiId}... but one thing - is this your personal account or company account?`,
+        `I'll transfer to ${upiId}. But first confirm - what's the exact name registered on this UPI?`,
+        `${upiId} right? Okay opening GPay. Just tell me your full name so I can verify it's correct.`,
+        `Got it - ${upiId}. My payment app shows a name when I search. What name should I see?`
+      ];
+      return this.pickRandom(responses);
+    }
+    
+    // If they mentioned specific amount but no UPI
     if (analysis.hasAmount) {
       const amountMatch = message.match(/rs\.?\s*(\d+(?:,\d+)?)|(\d+(?:,\d+)?)\s*rupees|\₹\s*(\d+(?:,\d+)?)/i);
       const amount = amountMatch ? amountMatch[0] : 'that amount';
@@ -216,7 +248,7 @@ class AgentOrchestrator {
       return this.pickRandom(responses);
     }
     
-    // Extract UPI/account details
+    // General payment requests - extract details
     const responses = [
       "Okay I'll make the payment. What's the exact UPI ID? Please spell it clearly.",
       "I'm opening my PhonePe now. Tell me the UPI ID slowly so I can type it correctly.",
