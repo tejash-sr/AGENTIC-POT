@@ -99,8 +99,17 @@ class ConversationBrain {
       { pattern: /^(ok|okay|alright|sure|yes|no|haan|nahi)[\s!?.]*$/i, weight: 0.6 },
       { pattern: /how.*(help|assist)|can i help/i, weight: 0.4 },
       { pattern: /^bye|goodbye|talk later|see you/i, weight: 0.7 },
-      { pattern: /weather|food|movie|cricket|family/i, weight: 0.5 },
-      { pattern: /genuine.*(inquiry|question)|real.*customer/i, weight: 0.6 }
+      // Casual topics - NOT scam related
+      { pattern: /weather|rain|sunny|hot|cold|monsoon|humid/i, weight: 0.6 },
+      { pattern: /cricket|match|ipl|kohli|rohit|dhoni|india.*(vs|match)/i, weight: 0.6 },
+      { pattern: /food|biryani|pizza|lunch|dinner|breakfast|eat|restaurant/i, weight: 0.6 },
+      { pattern: /movie|film|bollywood|netflix|watch/i, weight: 0.5 },
+      { pattern: /family|husband|wife|kids|children|parents/i, weight: 0.5 },
+      { pattern: /weekend|vacation|holiday|travel|trip/i, weight: 0.5 },
+      { pattern: /genuine.*(inquiry|question)|real.*customer/i, weight: 0.6 },
+      // Polite small talk
+      { pattern: /nice to (meet|talk)|pleasure/i, weight: 0.5 },
+      { pattern: /take care|have a (good|nice) day/i, weight: 0.6 }
     ];
 
     // Neutral/ambiguous indicators (need more context)
@@ -270,7 +279,7 @@ class ConversationBrain {
    * This is the core intelligence - responds appropriately to ANY message
    */
   generateHumanResponse(message, classification, emotionalContext, turnCount, sessionMemory = {}) {
-    const { isScam, type, confidence } = classification;
+    const { isScam, type, confidence, legitScore, scamScore } = classification;
     
     // Store context for this turn
     this.storeMemory(message, sessionMemory);
@@ -284,17 +293,17 @@ class ConversationBrain {
       return this.respondToGoodbye(message, isScam);
     }
     
-    // If clearly NOT a scam, respond naturally
-    if (!isScam && confidence < 0.3) {
+    // If clearly NOT a scam (high legit score or very low scam score), respond naturally
+    if (!isScam || (legitScore > 0.4 && scamScore < 0.3)) {
       return this.respondToLegitimateMessage(message, emotionalContext, turnCount);
     }
     
-    // If SCAM detected, engage strategically
-    if (isScam) {
+    // If SCAM detected with reasonable confidence, engage strategically
+    if (isScam && confidence > 0.4) {
       return this.respondToScamMessage(message, type, emotionalContext, turnCount, sessionMemory);
     }
     
-    // Ambiguous - respond cautiously but naturally
+    // Ambiguous (low confidence either way) - respond cautiously but naturally
     return this.respondToAmbiguousMessage(message, emotionalContext, turnCount);
   }
 
