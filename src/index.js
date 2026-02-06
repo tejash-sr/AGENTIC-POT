@@ -464,14 +464,42 @@ function calculateExtractionScore(intelligence) {
  * Generate contextual agent response
  */
 async function generateAgentResponse(session, detectionResult, stateTransition) {
+  // Build comprehensive context for the intelligent brain
+  const scammerMessages = session.messages.filter(m => m.sender === 'scammer');
+  const lastScammerMessage = scammerMessages.slice(-1)[0]?.text || '';
+  
   const context = {
+    // Session info
+    sessionId: session.sessionId,
     state: stateTransition.next_state,
-    scamType: detectionResult.scam_type,
+    
+    // Message context
+    lastScammerMessage: lastScammerMessage,
     turnCount: session.messages.length,
-    lastScammerMessage: session.messages.filter(m => m.sender === 'scammer').slice(-1)[0]?.text || '',
+    conversationHistory: session.messages,
+    
+    // Detection results (pass to brain for intelligent classification)
+    detectionResult: {
+      is_scam: detectionResult.is_scam,
+      confidence: detectionResult.confidence,
+      scam_type: detectionResult.scam_type,
+      has_financial_context: detectionResult.has_financial_context,
+      has_direct_request: detectionResult.has_direct_request,
+      urgency_level: detectionResult.urgency_level
+    },
+    
+    // Extraction context
+    scamType: detectionResult.scam_type,
     extractedItems: Object.values(session.extractedIntelligence).flat().length,
     hasFinancialContext: detectionResult.has_financial_context,
-    hasDirectRequest: detectionResult.has_direct_request
+    hasDirectRequest: detectionResult.has_direct_request,
+    
+    // Session memory for context awareness
+    sessionMemory: {
+      extractedIntelligence: session.extractedIntelligence,
+      scamConfidence: session.scamConfidence,
+      previousState: session.previousState
+    }
   };
 
   // Get state-specific prompt and generate response
@@ -481,7 +509,7 @@ async function generateAgentResponse(session, detectionResult, stateTransition) 
     conversationContext: context
   });
 
-  // Generate response based on state and context
+  // Generate intelligent response using the brain
   const response = await agentOrchestrator.generateResponse(prompt, context);
   return response;
 }
