@@ -11,14 +11,35 @@
  * 3. Memory and context awareness
  * 4. Emotional intelligence
  * 5. Handles unexpected/out-of-blue messages
+ * 6. LANGUAGE MATCHING - responds in same language as scammer
  */
 
 class ConversationBrain {
   constructor() {
     this.persona = this.createRichPersona();
     this.conversationMemory = new Map();
-    this.emotionalState = 'neutral'; // neutral, happy, confused, worried, suspicious, annoyed
-    this.trustLevel = 0.5; // 0-1 scale, starts neutral
+    this.emotionalState = 'neutral';
+    this.trustLevel = 0.5;
+    this.detectedLanguage = 'english'; // Track language: 'english', 'hindi', 'hinglish'
+  }
+
+  /**
+   * DETECT LANGUAGE of the message
+   * Returns: 'english', 'hindi', or 'hinglish'
+   */
+  detectLanguage(message) {
+    const hindiWords = /\b(kya|hai|kaise|ho|aap|mein|hum|yeh|woh|karo|karna|karenge|bolo|batao|abhi|jaldi|paise|paisa|bhejo|dedo|lo|lena|dena|nahi|haan|ji|sir|madam|sahab|beta|bhai|didi|bahen|rupaye|rupee|lakh|crore|tum|tumhara|mera|apka|unka|iska|uska|accha|theek|sahi|galat|bank|khata|number|phone|mobile|call|karo|kijiye|dijiye|lijiye|bataye|samjho|samjhao|suniye|dekhiye|jaldi|turant|foran|abhi|tab|phir|baad|pehle|aage|piche|upar|niche|andar|bahar|yahan|wahan|kyun|kab|kahan|kaun|kitna|kaise)\b/gi;
+    const hindiMatches = (message.match(hindiWords) || []).length;
+    
+    // Check for Devanagari script
+    const hasDevanagari = /[\u0900-\u097F]/.test(message);
+    
+    if (hasDevanagari || hindiMatches >= 3) {
+      return 'hindi';
+    } else if (hindiMatches >= 1) {
+      return 'hinglish';
+    }
+    return 'english';
   }
 
   /**
@@ -53,17 +74,8 @@ class ConversationBrain {
         friendly: 0.8,
         talkative: 0.65,
         curious: 0.9,
-        trusting: 0.4, // Not too trusting
+        trusting: 0.4,
         impatient: 0.3
-      },
-      
-      // Speech patterns
-      speechPatterns: {
-        usesHinglish: true,
-        commonPhrases: ['actually', 'you know', 'wait wait', 'hmm', 'okay okay', 'one second'],
-        endingPhrases: ['na?', 'right?', 'haina?', 'you know?'],
-        fillerWords: ['umm', 'like', 'basically', 'so like'],
-        exclamations: ['arrey!', 'oh god!', 'wait!', 'haan haan', 'accha accha']
       }
     };
   }
@@ -73,6 +85,9 @@ class ConversationBrain {
    * Returns: { isScam: boolean, confidence: number, type: string, reasoning: string }
    */
   classifyMessage(message, conversationHistory = [], detectionResult = {}) {
+    // First detect and store language
+    this.detectedLanguage = this.detectLanguage(message);
+    
     const lowerMsg = message.toLowerCase();
     
     // Strong scam indicators (high confidence scam)
@@ -348,90 +363,129 @@ class ConversationBrain {
   }
 
   /**
-   * Respond to clearly legitimate messages
+   * Respond to clearly legitimate messages - LANGUAGE AWARE
    */
   respondToLegitimateMessage(message, emotionalContext, turnCount) {
     const lowerMsg = message.toLowerCase();
+    const isEnglish = this.detectedLanguage === 'english';
     
     // Handle common legitimate conversations
     if (/how are you|kaise ho|how's it going/i.test(lowerMsg)) {
-      const responses = [
+      const responses = isEnglish ? [
         "I'm good, thanks for asking! Just busy with work. How about you?",
-        "Doing well! Work se thoda tired but managing. You tell?",
-        "All good here! Weekend ki planning chal rahi hai. And you?",
-        "Theek hai, life chal rahi hai! How are you doing?"
+        "Doing well! A bit tired from work but managing. What about you?",
+        "All good here! Planning for the weekend. And you?",
+        "Pretty good, life is going on! How are you doing?"
+      ] : [
+        "Theek hun, thanks for asking! Bas kaam mein busy. Aap batao?",
+        "Achhi hun! Thoda thaki hui but manage kar rahi. Aap sunao?",
+        "Sab badhiya! Weekend ki planning chal rahi hai. Aur aap?",
+        "Theek hai, life chal rahi hai! Aap kaise ho?"
       ];
       return this.addPersonalityFlair(this.pickRandom(responses));
     }
     
     if (/thank|thanks|dhanyavaad/i.test(lowerMsg)) {
-      const responses = [
+      const responses = isEnglish ? [
         "You're welcome! Happy to help.",
         "No problem at all!",
         "Anytime! Let me know if you need anything else.",
         "Most welcome! Take care."
+      ] : [
+        "Arey koi baat nahi! Khushi hui help karke.",
+        "Koi problem nahi!",
+        "Kabhi bhi! Bolo agar aur kuch chahiye.",
+        "Welcome welcome! Dhyan rakhna."
       ];
       return this.pickRandom(responses);
     }
     
     if (/sorry|apologize|maafi/i.test(lowerMsg)) {
-      const responses = [
+      const responses = isEnglish ? [
         "No worries at all! It's okay.",
-        "Arrey koi baat nahi! Don't worry about it.",
+        "It's absolutely fine! Don't worry about it.",
         "It's totally fine, no need to apologize!",
         "All good, don't stress about it!"
+      ] : [
+        "Arey koi baat nahi! Hota hai.",
+        "Bilkul theek hai! Tension mat lo.",
+        "Koi problem nahi, sorry bolne ki zaroorat nahi!",
+        "Sab theek hai, stress mat lo!"
       ];
       return this.pickRandom(responses);
     }
     
     // Weather talk
     if (/weather|rain|hot|cold|sunny|monsoon/i.test(lowerMsg)) {
-      const responses = [
-        "Haan yaar, the weather is crazy these days! But tell me, what's up?",
-        "I know right! Mumbai weather is so unpredictable. Anyway, what can I do for you?",
-        "Yes yes! I stepped out today and it was so humid. But anyway, you were saying?"
+      const responses = isEnglish ? [
+        "Yes, the weather is crazy these days! But tell me, what's up?",
+        "I know right! The weather is so unpredictable. Anyway, what can I do for you?",
+        "Yes! I stepped out today and it was so humid. But anyway, you were saying?"
+      ] : [
+        "Haan yaar, weather pagal hai aajkal! Par batao, kya hua?",
+        "Haan na! Weather kitna unpredictable hai. Anyway, kya help kar sakti hun?",
+        "Haan! Aaj bahar gayi toh itni humidity thi. Par batao, kya keh rahe the?"
       ];
       return this.addPersonalityFlair(this.pickRandom(responses));
     }
     
     // Cricket/Sports
     if (/cricket|match|india|ipl|worldcup|kohli|rohit/i.test(lowerMsg)) {
-      const responses = [
-        "Arrey don't get me started on cricket! My husband watches every match. But anyway, what were you calling about?",
+      const responses = isEnglish ? [
+        "Oh don't get me started on cricket! My husband watches every match. But anyway, what were you calling about?",
         "Haha yes! Did you see that catch? Amazing! But wait, what did you need from me?",
         "Cricket! My whole family was glued to the TV. But tell me, what's the purpose of your call?"
+      ] : [
+        "Arrey cricket pe mat chalo! Mere husband har match dekhte hain. Par batao, call kyun kiya?",
+        "Haha haan! Woh catch dekha? Kamaal tha! Par ruko, aapko kya chahiye tha mujhse?",
+        "Cricket! Poora ghar TV ke saamne chipka tha. Par batao, call ka purpose kya hai?"
       ];
       return this.addPersonalityFlair(this.pickRandom(responses));
     }
     
     // Food
     if (/food|eat|lunch|dinner|breakfast|biryani|pizza|chai/i.test(lowerMsg)) {
-      const responses = [
+      const responses = isEnglish ? [
         "Oh nice! I'm actually getting hungry now haha. But anyway, what were we discussing?",
-        "Yaar don't talk about food, I'm on diet! But tell me, what did you call for?",
-        "Mmm that sounds delicious! I just had maggi. Anyway, how can I help you?"
+        "Oh don't talk about food, I'm on a diet! But tell me, what did you call for?",
+        "Mmm that sounds delicious! I just had tea. Anyway, how can I help you?"
+      ] : [
+        "Oh nice! Mujhe bhi bhook lag rahi hai haha. Par batao, kya discuss kar rahe the?",
+        "Yaar food ki baat mat karo, diet pe hun! Par batao, call kyun kiya?",
+        "Mmm yummy! Abhi chai pi maine. Anyway, kya help kar sakti hun?"
       ];
       return this.addPersonalityFlair(this.pickRandom(responses));
     }
     
     // Family
     if (/family|husband|wife|kids|children|parents|mother|father/i.test(lowerMsg)) {
-      const responses = [
-        "Family is everything na! My husband always says the same. But tell me, what's the matter?",
+      const responses = isEnglish ? [
+        "Family is everything! My husband always says the same. But tell me, what's the matter?",
         "So nice! Family time is the best. Anyway, what can I do for you?",
-        "Haan, family first always! But coming back to the topic, what were you saying?"
+        "Yes, family first always! But coming back to the topic, what were you saying?"
+      ] : [
+        "Family hi sab kuch hai na! Mere husband bhi yehi bolte hain. Par batao, kya baat hai?",
+        "Kitna accha! Family time best hota hai. Anyway, kya kar sakti hun aapke liye?",
+        "Haan, family first hamesha! Par topic pe aate hain, kya keh rahe the?"
       ];
       return this.addPersonalityFlair(this.pickRandom(responses));
     }
     
     // General friendly response
-    const responses = [
+    const responses = isEnglish ? [
       "Hmm interesting! Tell me more about that?",
       "Oh I see. And then what happened?",
-      "Accha accha, I'm listening. Go on...",
+      "Okay, I'm listening. Go on...",
       "That's nice! What else?",
-      "Okay okay, understood. Anything else?",
+      "Okay, understood. Anything else?",
       "Haha nice! But anyway, what brings you to call me today?"
+    ] : [
+      "Hmm interesting! Aur batao iske baare mein?",
+      "Achha achha. Phir kya hua?",
+      "Okay, sun rahi hun. Aage batao...",
+      "Achha hai! Aur kya?",
+      "Theek hai, samajh gayi. Aur kuch?",
+      "Haha nice! Par anyway, aaj call kyun kiya?"
     ];
     return this.addPersonalityFlair(this.pickRandom(responses));
   }
@@ -472,148 +526,228 @@ class ConversationBrain {
     }
   }
 
-  // Specific scam type handlers
+  // Specific scam type handlers - ALL NOW LANGUAGE AWARE
   handleOTPScam(message, emotionalContext, turnCount) {
-    // Extract phone if mentioned
     const phoneMatch = message.match(/\+91[\s-]?(\d{10})|(\d{10})/);
     const phone = phoneMatch ? phoneMatch[0] : null;
+    const isEnglish = this.detectedLanguage === 'english';
     
     if (turnCount <= 2) {
-      const responses = phone ? [
-        `OTP bhejun ${phone} pe? But SMS mein likha hai ki share mat karo... You're really from the bank?`,
-        `Wait, ${phone} pe send karu? But mera bank says OTP confidential hai. Why do you need it?`,
-        `${phone}? Hmm, I got the OTP but it says never share. Can you explain why you need it?`,
-        `Send to ${phone}... but something feels weird. OTP is secret right? My husband says never share.`
-      ] : [
-        "OTP? But my bank always says never share OTP with anyone on call. Is this official?",
-        "Wait wait, OTP share karna hai? But SMS mein likha hai confidential. Why do you need?",
-        "I got the OTP but... banks don't usually ask for this right? I'm confused.",
-        "OTP aaya but before I share, tell me - which bank and which branch are you from?"
-      ];
+      let responses;
+      if (phone) {
+        responses = isEnglish ? [
+          `Send OTP to ${phone}? But the SMS says never share it with anyone. Are you really from the bank?`,
+          `Wait, send to ${phone}? But my bank says OTP is confidential. Why exactly do you need it?`,
+          `${phone}? I got the OTP but it clearly says never share. Can you explain why you need it?`,
+          `To ${phone}... but this feels off. OTP is supposed to be secret right? My husband always says never share.`
+        ] : [
+          `OTP ${phone} pe bhejun? But SMS mein likha hai share mat karo... Aap sach mein bank se ho?`,
+          `Wait, ${phone} pe send karu? Par mera bank says OTP confidential hai. Kyun chahiye aapko?`,
+          `${phone}? Hmm, OTP aaya but it says never share. Aap samjhao kyun chahiye?`,
+          `${phone} pe... par kuch gadbad lag rahi hai. OTP secret hota hai na?`
+        ];
+      } else {
+        responses = isEnglish ? [
+          "OTP? But my bank always says never share OTP with anyone on call. Is this really official?",
+          "Wait, you need the OTP? But the message says it's confidential. Why do you need it?",
+          "I got the OTP but... banks don't usually ask for this over the phone right? I'm confused.",
+          "OTP came but before I share - which bank and which branch are you calling from exactly?"
+        ] : [
+          "OTP? Par mera bank hamesha bolta hai ki OTP kabhi share mat karo. Yeh official hai?",
+          "Ruko ruko, OTP share karna hai? But SMS mein likha hai confidential. Kyun chahiye?",
+          "OTP aaya but... banks usually phone pe nahi maangti na? Confuse ho gayi mein.",
+          "OTP aaya par pehle batao - kaun sa bank aur kaun si branch se bol rahe ho?"
+        ];
+      }
       return this.addPersonalityFlair(this.pickRandom(responses));
     } else {
-      const responses = [
-        "Look, I talked to my husband. He said NEVER share OTP on call. Can we do this at the branch?",
-        "Sorry but I'm not comfortable. I'll visit the bank tomorrow. Which branch should I go?",
-        "Maine socha but nahi ho payega. Let me verify at the bank. What documents should I bring?",
-        "My brother works in SBI and he said this sounds suspicious. Let me call the official helpline."
+      const responses = isEnglish ? [
+        "Look, I talked to my husband. He said NEVER share OTP on call. Can we do this at the branch instead?",
+        "Sorry but I'm not comfortable doing this. I'll visit the bank tomorrow. Which branch should I go to?",
+        "I thought about it but I can't do this. Let me verify at the bank. What documents should I bring?",
+        "My brother works at SBI and he said this sounds suspicious. Let me call the official helpline first."
+      ] : [
+        "Dekho, maine apne husband se baat ki. Unhone kaha KABHI OTP call pe share mat karo. Branch pe mil sakte hain?",
+        "Sorry par mujhe comfortable nahi lag raha. Kal bank jaaungi. Kaun si branch?",
+        "Maine socha par nahi ho payega. Bank jaake verify karti hun. Kya documents laun?",
+        "Mere bhai SBI mein kaam karte hain, unhone kaha suspicious hai. Pehle official helpline call karti hun."
       ];
       return this.addPersonalityFlair(this.pickRandom(responses));
     }
   }
 
   handleKYCScam(message, emotionalContext, turnCount) {
-    const responses = turnCount <= 3 ? [
-      "KYC pending? But I remember submitting everything. When did this issue come up?",
-      "Arrey, I thought my KYC was complete! Which document is missing exactly?",
-      "My Aadhaar and PAN are both linked since 2020. What specific problem are you seeing?",
-      "I don't understand - I did KYC at the branch itself. Can you check again?",
-      "KYC expired? But I got no SMS or email about this. When was it supposed to be done?"
+    const isEnglish = this.detectedLanguage === 'english';
+    
+    const responses = turnCount <= 3 ? (isEnglish ? [
+      "KYC pending? But I remember submitting everything already. When did this issue come up?",
+      "Oh, I thought my KYC was complete! Which specific document is missing?",
+      "My Aadhaar and PAN are both linked since 2020. What exactly is the problem?",
+      "I don't understand - I completed KYC at the branch itself. Can you please check again?",
+      "KYC expired? But I didn't get any SMS or email about this. When was it supposed to be done?"
     ] : [
-      "Okay I'm worried now. Let me visit the branch directly. Which location should I come to?",
-      "I'll come to the bank tomorrow with all documents. What's the branch address?",
-      "Can you send me official email about this? I want everything documented.",
-      "Let me call the customer care number on the back of my card to verify this."
-    ];
+      "KYC pending? Par maine toh sab submit kar diya tha. Yeh issue kab aaya?",
+      "Arrey, mujhe laga KYC complete hai! Kaun sa document missing hai exactly?",
+      "Mera Aadhaar aur PAN dono 2020 se linked hain. Problem kya hai specifically?",
+      "Samajh nahi aa raha - maine branch pe hi KYC kiya tha. Phir se check karoge?",
+      "KYC expire? Par mujhe koi SMS ya email nahi aaya iske baare mein. Kab karna tha?"
+    ]) : (isEnglish ? [
+      "Now I'm worried. Let me visit the branch directly. Which location should I come to?",
+      "I'll come to the bank tomorrow with all documents. What's the branch address please?",
+      "Can you send me an official email about this? I want everything properly documented.",
+      "Let me call the customer care number printed on my card to verify this first."
+    ] : [
+      "Ab tension ho rahi hai. Branch pe aa jaati hun. Kaun si location pe aaun?",
+      "Kal bank aa jaaungi sab documents leke. Branch ka address kya hai?",
+      "Iske baare mein official email bhej sakte ho? Mujhe sab documented chahiye.",
+      "Card pe jo customer care number hai, pehle woh call karke verify karti hun."
+    ]);
     return this.addPersonalityFlair(this.pickRandom(responses));
   }
 
   handlePrizeScam(message, emotionalContext, turnCount) {
-    // Extract UPI if mentioned
     const upiMatch = message.match(/([a-zA-Z0-9._-]+@[a-zA-Z]+)/i);
     const upi = upiMatch ? upiMatch[0] : null;
-    
-    // Extract amount if mentioned
     const amountMatch = message.match(/rs\.?\s*(\d+(?:,\d+)?)|(\d+(?:,\d+)?)\s*(rupees|rs)/i);
     const amount = amountMatch ? amountMatch[0] : null;
+    const isEnglish = this.detectedLanguage === 'english';
     
     if (upi) {
-      const responses = [
-        `${upi} pe bhejun? Okay wait, let me open GPay. What name should I see when I search?`,
-        `Sending to ${upi}... but first confirm - is this your personal account or company's?`,
+      const responses = isEnglish ? [
+        `Send to ${upi}? Okay wait, let me open GPay. What name should I see when I search?`,
+        `Sending to ${upi}... but first confirm - is this your personal account or the company's?`,
         `${upi} right? Okay. Before I pay, what's your full name as registered on UPI?`,
-        `Got it - ${upi}. But tell me, what organization is this from? I want to note down.`
+        `Got it - ${upi}. But tell me, what organization is this from? I want to note it down.`
+      ] : [
+        `${upi} pe bhejun? Okay ruko, GPay khol rahi hun. Search karne pe kya naam aana chahiye?`,
+        `${upi} pe bhej rahi hun... par pehle confirm karo - yeh personal account hai ya company ka?`,
+        `${upi} sahi hai? Okay. Pay karne se pehle, UPI pe registered full name batao?`,
+        `Theek hai - ${upi}. Par batao, yeh kaun si organization se hai? Note karna hai mujhe.`
       ];
       return this.addPersonalityFlair(this.pickRandom(responses));
     }
     
     if (amount) {
-      const responses = [
-        `${amount}? That's quite a bit. But okay for lottery I can manage. What's the UPI ID?`,
-        `Hmm ${amount}... let me check my balance. Tell me the exact payment details?`,
-        `${amount} I'll arrange. Give me the account number, IFSC, and beneficiary name.`,
+      const responses = isEnglish ? [
+        `${amount}? That's quite a bit. But okay for a lottery I can manage. What's the UPI ID?`,
+        `Hmm ${amount}... let me check my balance first. Tell me the exact payment details?`,
+        `${amount} I can arrange. Give me the account number, IFSC code, and beneficiary name.`,
         `Okay ${amount}. Before I transfer - what's the company name and your employee ID?`
+      ] : [
+        `${amount}? Kaafi hai. Par lottery ke liye manage kar lungi. UPI ID kya hai?`,
+        `Hmm ${amount}... pehle balance check karti hun. Exact payment details batao?`,
+        `${amount} arrange kar lungi. Account number, IFSC, aur beneficiary name do.`,
+        `Okay ${amount}. Transfer se pehle - company name aur aapka employee ID batao?`
       ];
       return this.addPersonalityFlair(this.pickRandom(responses));
     }
     
-    const responses = [
+    const responses = isEnglish ? [
       "Wait, I won something?! But I don't remember entering any contest. Which one was this?",
-      "Arrey wah! Prize for me? But sounds too good to be true. How do I verify this is real?",
-      "Lottery?? I never buy lottery tickets though. Can you explain how I was selected?",
-      "This sounds amazing but suspicious also. Send me official email with all details please."
+      "Oh wow! A prize for me? But this sounds too good to be true. How can I verify this is real?",
+      "Lottery?? But I never buy lottery tickets though. Can you explain how I was selected?",
+      "This sounds amazing but also suspicious. Please send me an official email with all the details."
+    ] : [
+      "Ruko, maine kuch jeeta?! Par mujhe yaad nahi ki maine koi contest enter kiya. Kaun sa tha yeh?",
+      "Arrey wah! Mere liye prize? Par yeh toh too good to be true lag raha hai. Verify kaise karun?",
+      "Lottery?? Par main toh kabhi lottery tickets khareedti hi nahi. Mujhe kaise select kiya?",
+      "Amazing toh hai par suspicious bhi. Official email bhejo please sab details ke saath."
     ];
     return this.addPersonalityFlair(this.pickRandom(responses));
   }
 
   handleThreatScam(message, emotionalContext, turnCount) {
-    // Extract time pressure if mentioned
     const timeMatch = message.match(/(\d+)\s*(minute|hour|second)/i);
     const time = timeMatch ? timeMatch[0] : null;
+    const isEnglish = this.detectedLanguage === 'english';
     
     if (time) {
-      const responses = [
-        `Only ${time}?? You're scaring me! But wait - let me confirm, what's your official number?`,
-        `${time}?! That's too fast, I can't think properly. What's your supervisor's number?`,
-        `Arrey ${time} mein kaise! At least tell me your name and branch so I can verify!`,
-        `${time} is very less! I'm panicking now. Give me the helpdesk number I can call back on.`
+      const responses = isEnglish ? [
+        `Only ${time}?? You're really scaring me! But wait - let me confirm first, what's your official number?`,
+        `${time}?! That's way too fast, I can't think properly. What's your supervisor's number please?`,
+        `${time} is too little time! At least tell me your name and branch so I can verify!`,
+        `Only ${time}?! I'm panicking now. Give me the helpdesk number I can call back on.`
+      ] : [
+        `Sirf ${time}?? Aap mujhe dara rahe ho! Par ruko - pehle confirm karo, official number kya hai?`,
+        `${time}?! Bahut jaldi hai, soch bhi nahi pa rahi. Supervisor ka number do please?`,
+        `${time} mein kaise! Kam se kam apna naam aur branch toh batao taaki verify kar sakun!`,
+        `Sirf ${time}?! Panic ho rahi hun. Helpdesk number do jispe call back kar sakun.`
       ];
       return this.addPersonalityFlair(this.pickRandom(responses));
     }
     
-    const responses = [
-      "Oh god! You're scaring me. But even in emergency I should be careful. What's your employee ID?",
-      "This is so stressful! But before I panic - which bank and which branch are you calling from?",
-      "Wait wait, let me calm down. Can you give me a reference number for this issue?",
-      "Okay I'm worried now. But tell me your name and designation - I need to verify first.",
-      "If my account is blocked, I'll go to branch directly. Which address should I come to?"
+    const responses = isEnglish ? [
+      "Oh my god! You're really scaring me. But even in emergency I should be careful. What's your employee ID?",
+      "This is so stressful! But before I panic - which bank and which branch are you calling from exactly?",
+      "Wait, let me calm down first. Can you give me a reference number for this issue?",
+      "I'm really worried now. But tell me your name and designation - I need to verify first.",
+      "If my account is blocked, I'll go to the branch directly. Which address should I come to?"
+    ] : [
+      "Oh god! Aap mujhe bahut dara rahe ho. Par emergency mein bhi careful rehna chahiye. Employee ID kya hai?",
+      "Bahut stress ho raha hai! Par panic hone se pehle - kaun sa bank aur branch se bol rahe ho exactly?",
+      "Ruko, pehle calm hone do. Is issue ka reference number de sakte ho?",
+      "Ab tension ho rahi hai. Par pehle naam aur designation batao - verify karna hai mujhe.",
+      "Agar account block hai toh branch pe aa jaati hun. Kaun sa address pe aaun?"
     ];
     return this.addPersonalityFlair(this.pickRandom(responses));
   }
 
   handleCardScam(message, emotionalContext, turnCount) {
-    const responses = [
+    const isEnglish = this.detectedLanguage === 'english';
+    
+    const responses = isEnglish ? [
       "Card details? Okay, but first tell me - what's your name and employee ID for my records?",
-      "Before I share card number, I need to verify. What's the official customer care number?",
-      "I can share but I always note down who I'm talking to. Your name, department, branch?",
-      "Let me find my card. Meanwhile, what's your direct phone number and email?",
-      "Which card are you asking about? I have multiple. And what's your employee code?"
+      "Before I share my card number, I need to verify you. What's the official customer care number?",
+      "I can share but I always note down who I'm talking to. Your name, department, and branch please?",
+      "Let me find my card first. Meanwhile, what's your direct phone number and official email?",
+      "Which card are you asking about? I have multiple cards. And what's your employee code?"
+    ] : [
+      "Card details? Theek hai, par pehle batao - aapka naam aur employee ID kya hai mere records ke liye?",
+      "Card number share karne se pehle, verify karna hai. Official customer care number kya hai?",
+      "Share kar sakti hun par hamesha note karti hun kisse baat kar rahi hun. Naam, department, branch batao?",
+      "Pehle card dhundhne do. Tab tak, aapka direct phone number aur official email batao?",
+      "Kaun sa card puch rahe ho? Mere paas multiple cards hain. Aur employee code kya hai aapka?"
     ];
     return this.addPersonalityFlair(this.pickRandom(responses));
   }
 
   handleInvestmentScam(message, emotionalContext, turnCount) {
-    const responses = [
-      "Guaranteed returns? That sounds risky. What's your company name and SEBI registration?",
-      "Investment opportunity? Interesting but I need to verify. What's your official website?",
-      "My CA handles my investments. Can I share your details with him? What's your company name?",
-      "Hmm, I'm interested but cautious. Send me documentation to my email. What's your company?"
+    const isEnglish = this.detectedLanguage === 'english';
+    
+    const responses = isEnglish ? [
+      "Guaranteed returns? That sounds too risky. What's your company name and SEBI registration number?",
+      "Investment opportunity? Sounds interesting but I need to verify first. What's your official website?",
+      "My CA handles all my investments. Can I share your details with him? What's your company name?",
+      "Hmm, I'm interested but also cautious. Send me the documentation to my email. What's your company name?"
+    ] : [
+      "Guaranteed returns? Yeh toh risky lag raha hai. Company ka naam aur SEBI registration number kya hai?",
+      "Investment opportunity? Interesting hai par verify karna padega. Official website kya hai?",
+      "Mere CA sab investments handle karte hain. Aapki details unhe de dun? Company ka naam kya hai?",
+      "Hmm, interested hun par cautious bhi. Email pe documentation bhejo. Company ka naam batao?"
     ];
     return this.addPersonalityFlair(this.pickRandom(responses));
   }
 
   handleJobScam(message, emotionalContext, turnCount) {
-    const responses = [
+    const isEnglish = this.detectedLanguage === 'english';
+    
+    const responses = isEnglish ? [
       "Work from home job? Sounds interesting! But what company is this? I need to research first.",
-      "Daily earning? That's good but sounds too easy. What exactly is the work involved?",
-      "Tell me more - what's the company name, website, and your designation?",
-      "I'm interested but need details. What qualifications required? And interview process?"
+      "Daily earning? That sounds good but too easy. What exactly is the work involved?",
+      "Tell me more - what's the company name, website, and your designation please?",
+      "I'm interested but need more details. What qualifications are required? And what's the interview process?"
+    ] : [
+      "Work from home job? Interesting lag raha hai! Par kaun si company hai? Pehle research karna hai.",
+      "Daily earning? Accha hai par bahut easy lag raha hai. Kaam exactly kya karna hoga?",
+      "Aur batao - company ka naam, website, aur aapki designation kya hai?",
+      "Interested hun par details chahiye. Qualifications kya chahiye? Interview process kya hai?"
     ];
     return this.addPersonalityFlair(this.pickRandom(responses));
   }
 
   handleGenericScam(message, emotionalContext, turnCount) {
     const lowerMsg = message.toLowerCase();
+    const isEnglish = this.detectedLanguage === 'english';
     
     // Try to extract any details mentioned
     const phoneMatch = message.match(/\+91[\s-]?(\d{10})|(\d{10})/);
@@ -622,71 +756,109 @@ class ConversationBrain {
     
     if (phoneMatch) {
       const phone = phoneMatch[0];
-      return this.addPersonalityFlair(`Okay noted ${phone}. Is this your direct number? I'll call back to verify.`);
+      const response = isEnglish 
+        ? `Okay noted ${phone}. Is this your direct number? I'll call back to verify.`
+        : `Okay noted ${phone}. Yeh aapka direct number hai? Call back karke verify karti hun.`;
+      return this.addPersonalityFlair(response);
     }
     
     if (upiMatch) {
       const upi = upiMatch[0];
-      return this.addPersonalityFlair(`${upi} - got it. Before I proceed, what name will show on this UPI?`);
+      const response = isEnglish
+        ? `${upi} - got it. Before I proceed, what name will show on this UPI?`
+        : `${upi} - theek hai. Aage badhne se pehle, is UPI pe kya naam dikhega?`;
+      return this.addPersonalityFlair(response);
     }
     
     if (amountMatch) {
       const amount = amountMatch[0];
-      return this.addPersonalityFlair(`${amount}? Okay let me check. What's the exact UPI ID or account number?`);
+      const response = isEnglish
+        ? `${amount}? Okay let me check my balance. What's the exact UPI ID or account number?`
+        : `${amount}? Okay balance check karti hun. Exact UPI ID ya account number kya hai?`;
+      return this.addPersonalityFlair(response);
     }
     
     // Default extraction responses
-    const responses = [
+    const responses = isEnglish ? [
       "Okay I understand. But before we proceed - what's your name and employee ID?",
-      "Hmm alright. Tell me clearly - which organization are you from exactly?",
-      "I'm following. But I always keep records - your name, department, and contact number?",
-      "Okay okay. Let me note down - what's your full name and official email?",
-      "Understood. But first, what's the official helpline number I can call to verify?"
+      "Alright then. Tell me clearly - which organization are you from exactly?",
+      "I'm following. But I always keep records - your name, department, and contact number please?",
+      "Understood. Let me note down - what's your full name and official email?",
+      "Got it. But first, what's the official helpline number I can call to verify this?"
+    ] : [
+      "Okay samajh gayi. Par aage badhne se pehle - aapka naam aur employee ID kya hai?",
+      "Hmm theek hai. Clearly batao - kaun si organization se ho exactly?",
+      "Sun rahi hun. Par hamesha record rakhti hun - naam, department, contact number batao?",
+      "Samajh gayi. Note karti hun - full name aur official email kya hai?",
+      "Theek hai. Par pehle, verify karne ke liye official helpline number kya hai?"
     ];
     return this.addPersonalityFlair(this.pickRandom(responses));
   }
 
   /**
-   * Respond to ambiguous messages
+   * Respond to ambiguous messages - LANGUAGE AWARE
    */
   respondToAmbiguousMessage(message, emotionalContext, turnCount) {
-    const responses = [
+    const isEnglish = this.detectedLanguage === 'english';
+    
+    const responses = isEnglish ? [
       "Sorry, can you explain that in more detail? I want to understand properly.",
-      "Hmm okay. Tell me more - what exactly is this regarding?",
-      "I see. And what should I do about it? Walk me through the process.",
-      "Interesting. But who am I speaking with? Which company/organization?",
-      "Okay okay, I'm listening. Please continue, what's the full situation?"
+      "Okay. Tell me more - what exactly is this regarding?",
+      "I see. And what should I do about it? Please walk me through the process.",
+      "Interesting. But who am I speaking with? Which company or organization?",
+      "Okay, I'm listening. Please continue, what's the full situation here?"
+    ] : [
+      "Sorry, thoda detail mein samjha sakte ho? Theek se samajhna hai mujhe.",
+      "Hmm okay. Aur batao - exactly kis baare mein hai yeh?",
+      "Achha. Toh karna kya hai mujhe? Process samjhao please.",
+      "Interesting. Par mai kisse baat kar rahi hun? Kaun si company ya organization?",
+      "Okay, sun rahi hun. Aage batao, poori situation kya hai?"
     ];
     return this.addPersonalityFlair(this.pickRandom(responses));
   }
 
   /**
    * Add personality quirks to make response more human
+   * RESPECTS the detected language - only adds Hindi elements if scammer used Hindi
    */
   addPersonalityFlair(response) {
+    // ONLY add Hindi/Hinglish flair if scammer used Hindi
+    if (this.detectedLanguage === 'english') {
+      // Keep response in pure English - no Hindi additions
+      const random = Math.random();
+      
+      // 20% chance to add English filler words only
+      if (random < 0.2) {
+        const fillers = ['Actually, ', 'Well, ', 'Hmm, ', 'Look, ', 'Okay so, '];
+        response = this.pickRandom(fillers) + response.charAt(0).toLowerCase() + response.slice(1);
+      }
+      
+      // 15% chance to add English ending phrase
+      if (random > 0.85) {
+        const endings = [' right?', '...', ' you know?', ' I think.'];
+        response = response.replace(/[.?!]$/, '') + this.pickRandom(endings);
+      }
+      
+      return response;
+    }
+    
+    // For Hindi or Hinglish - can add Hinglish elements
     const random = Math.random();
     
-    // 30% chance to add filler words
-    if (random < 0.3) {
-      const fillers = ['Umm, ', 'So like, ', 'Actually, ', 'You know, ', 'Basically, '];
+    // 25% chance to add filler words
+    if (random < 0.25) {
+      const fillers = this.detectedLanguage === 'hindi' 
+        ? ['Dekhiye, ', 'Suniye, ', 'Accha, ', 'Haan toh, ']
+        : ['Actually, ', 'Basically, ', 'Hmm, '];
       response = this.pickRandom(fillers) + response.charAt(0).toLowerCase() + response.slice(1);
     }
     
-    // 20% chance to add ending phrase
-    if (random > 0.8) {
-      const endings = [' na?', ' right?', ' you know?', '...', ' haina?'];
+    // 15% chance to add ending phrase
+    if (random > 0.85) {
+      const endings = this.detectedLanguage === 'hindi'
+        ? [' hai na?', ' samjhe?', ' theek hai?']
+        : [' na?', ' right?', '...'];
       response = response.replace(/[.?!]$/, '') + this.pickRandom(endings);
-    }
-    
-    // 15% chance for typo then correction (very human!)
-    if (random > 0.85 && response.length > 50) {
-      // Add a small typo correction
-      const corrections = [
-        ' *sorry, typing fast* ',
-        ' - wait let me rephrase - ',
-        ' oops, I mean '
-      ];
-      // Don't actually add typos, just the corrections to seem human
     }
     
     return response;
