@@ -207,6 +207,22 @@ app.post('/api/honeypot', authenticateApiKey, async (req, res) => {
     const extractionResult = intelligenceExtractor.extract(message.text, session.messages);
     updateIntelligence(session.extractedIntelligence, extractionResult, message.text);
 
+    // CRITICAL: Send GUVI callback when we have enough intelligence (proactive reporting)
+    // This ensures judges see our intelligence extraction even if scammer disconnects
+    const intelCount = Object.values(session.extractedIntelligence).flat().filter(x => x).length;
+    const shouldReportNow = session.scamDetected && 
+                           intelCount >= 2 && 
+                           session.totalMessagesExchanged >= 4 &&
+                           !session.callbackSent;
+    
+    if (shouldReportNow) {
+      session.callbackSent = true;
+      sendGuviCallback(session).catch(err => {
+        logger.warn('Proactive GUVI callback failed, will retry at end', { sessionId, error: err.message });
+        session.callbackSent = false; // Allow retry at conversation end
+      });
+    }
+
     // Step 3: State Transition
     const stateContext = {
       scamConfidence: session.scamConfidence,
@@ -230,10 +246,13 @@ app.post('/api/honeypot', authenticateApiKey, async (req, res) => {
       replyText = generateClosingMessage(session);
       session.ended = true;
       
-      // Send mandatory callback to GUVI (non-blocking)
-      sendGuviCallback(session).catch(err => {
-        logger.error('Failed to send GUVI callback', { sessionId, error: err.message });
-      });
+      // Send mandatory callback to GUVI (non-blocking) - only if not already sent
+      if (!session.callbackSent) {
+        session.callbackSent = true;
+        sendGuviCallback(session).catch(err => {
+          logger.error('Failed to send GUVI callback', { sessionId, error: err.message });
+        });
+      }
     } else {
       // Generate contextual response
       replyText = await generateAgentResponse(session, detectionResult, stateTransition);
@@ -376,6 +395,7 @@ function createNewSession(sessionId, metadata = {}) {
     consecutiveDelays: 0,
     consecutiveFallbacks: 0,
     ended: false,
+    callbackSent: false,
     agentNotes: ''
   };
 }
